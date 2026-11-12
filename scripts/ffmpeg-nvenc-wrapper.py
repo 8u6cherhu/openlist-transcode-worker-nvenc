@@ -84,6 +84,10 @@ def main() -> int:
     aq_strength = config.get("aq_strength", 0)
     if aq_strength not in (None, "", 0, "0") and str(aq_strength).isdigit():
         add_if_missing(injected, args, {"-aq-strength"}, "-aq-strength", str(aq_strength))
+    # H.264 NVENC on the target GPU cannot encode 10-bit input. Keep the
+    # conversion scoped to H.264; HEVC jobs retain the source/profile choice.
+    if codec == "h264_nvenc":
+        add_if_missing(injected, args, {"-pix_fmt"}, "-pix_fmt", "yuv420p")
 
     final_args = args[:output_index] + injected + args[output_index:]
     if os.environ.get("OPENLIST_LOG_FFMPEG_ARGS", "0") == "1":
