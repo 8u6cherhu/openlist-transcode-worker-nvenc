@@ -68,7 +68,37 @@ def save_config(value: dict) -> None:
     os.replace(temp, CONFIG_FILE)
 
 
-def env_initial_config() -> dict:
+def apply_cli_overrides(config: dict, args: list[str]) -> bool:
+    worker = config["worker"]
+    names = {
+        "--master": "master",
+        "--secret": "secret",
+        "--name": "name",
+        "--capacity": "capacity",
+        "--hwaccel": "hwaccel",
+        "--ffmpeg": "ffmpeg",
+        "--workdir": "workdir",
+    }
+    changed = False
+    index = 0
+    while index < len(args):
+        token = args[index]
+        key = value = None
+        if "=" in token:
+            raw_key, value = token.split("=", 1)
+            key = names.get(raw_key)
+        elif token in names and index + 1 < len(args):
+            key = names[token]
+            value = args[index + 1]
+            index += 1
+        if key is not None and value is not None:
+            worker[key] = int(value) if key == "capacity" else value
+            changed = True
+        index += 1
+    return changed
+
+
+def env_initial_config(args: list[str]) -> dict:
     config = load_config()
     worker = config["worker"]
     env_map = {
@@ -85,6 +115,7 @@ def env_initial_config() -> dict:
         if raw:
             worker[key] = int(raw) if key == "capacity" else raw
             changed = True
+    changed = apply_cli_overrides(config, args) or changed
     if changed or not CONFIG_FILE.exists():
         save_config(config)
     return config
@@ -105,9 +136,9 @@ def worker_args(config: dict) -> list[str]:
 
 
 class Runtime:
-    def __init__(self):
+    def __init__(self, args: list[str]):
         self.lock = threading.RLock()
-        self.config = env_initial_config()
+        self.config = env_initial_config(args)
         self.process: subprocess.Popen | None = None
         self.start_worker()
 
@@ -148,7 +179,7 @@ class Runtime:
         raise SystemExit(0)
 
 
-runtime = Runtime()
+runtime = Runtime(sys.argv[1:])
 
 
 class Handler(BaseHTTPRequestHandler):
