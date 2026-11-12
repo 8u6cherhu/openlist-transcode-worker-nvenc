@@ -35,6 +35,8 @@ OPENLIST_WORKER_CAPACITY=1
 
 The worker's configuration volume is separate from its temporary transcoding directory, so UI settings persist across image updates.
 
+If an older Compose file passes `--ffmpeg=/usr/bin/ffmpeg`, remove that argument or change it to `/usr/local/bin/ffmpeg-nvenc-wrapper`; otherwise the Worker remains compatible but the NVENC tuning layer is bypassed.
+
 Open `http://server:8080/` to edit Worker connection settings and the NVENC options. Saving writes the config atomically and restarts only the official Worker child process. If the page is unavailable, the same settings can be supplied with `OPENLIST_MASTER`, `OPENLIST_SECRET`, `OPENLIST_WORKER_NAME`, `OPENLIST_CAPACITY`, `OPENLIST_HWACCEL`, and `OPENLIST_WORKDIR`.
 
 ## NVENC options
