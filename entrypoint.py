@@ -204,6 +204,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path in ("/", "/index.html"):
+            raw = (WEB_ROOT / "index.html").read_bytes()
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+            return
         if not self.authorized():
             self.send_json({"error": "UI password required"}, HTTPStatus.UNAUTHORIZED)
             return
@@ -217,14 +225,6 @@ class Handler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/capabilities":
             self.send_json({"ffmpeg": os.environ.get("OPENLIST_REAL_FFMPEG", "/usr/bin/ffmpeg"), "wrapper": runtime.config["worker"]["ffmpeg"]})
-            return
-        if parsed.path in ("/", "/index.html"):
-            raw = (WEB_ROOT / "index.html").read_bytes()
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(raw)))
-            self.end_headers()
-            self.wfile.write(raw)
             return
         self.send_error(HTTPStatus.NOT_FOUND)
 

@@ -15,6 +15,7 @@ docker run -d --name openlist-nvenc-worker \
   -v openlist-worker-state:/var/lib/openlist-worker \
   -e OPENLIST_MASTER=http://openlist:5244 \
   -e OPENLIST_SECRET='set-the-same-secret-in-openlist' \
+  -e OPENLIST_UI_PASSWORD='choose-a-local-ui-password' \
   ghcr.io/8u6cherhu/openlist-transcode-worker:latest
 ```
 
