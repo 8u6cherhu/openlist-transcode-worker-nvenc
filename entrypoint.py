@@ -34,7 +34,7 @@ DEFAULT_CONFIG = {
         "cq": 0,
         "multipass": "qres",
         "lookahead": 0,
-        "bf": 3,
+        "bf": 0,
         "b_ref_mode": "disabled",
         "spatial_aq": True,
         "temporal_aq": True,
