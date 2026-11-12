@@ -26,8 +26,8 @@ The repository also includes `compose.worker.example.yml`; copy it to a deployme
 Set `OPENLIST_NETWORK` in the local `.env` file to the Docker network shared by the Master and Worker. Keep real deployment values out of the public repository:
 
 ```dotenv
-OPENLIST_WORKER_SECRET=<same secret configured in OpenList>
-NVIDIA_WORKER_GPU=0
+OPENLIST_SECRET=<same secret configured in OpenList>
+NVIDIA_VISIBLE_DEVICES=all
 OPENLIST_UI_PASSWORD=<optional local UI password>
 OPENLIST_WORKER_NAME=nvenc-worker
 OPENLIST_WORKER_CAPACITY=1
