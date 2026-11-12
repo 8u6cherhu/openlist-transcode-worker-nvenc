@@ -1,0 +1,5 @@
+.env
+.env.*
+openlist-transcode-worker
+*.log
+worker_tmp/
