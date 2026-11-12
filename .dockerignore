@@ -1,4 +1,6 @@
 .git
-.github
-README.md
-.env*
+.gitignore
+work
+outputs
+*.log
+*.tmp

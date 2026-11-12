@@ -1,0 +1,30 @@
+services:
+  openlist-nvenc-worker:
+    image: ghcr.io/8u6cherhu/openlist-transcode-worker:latest
+    container_name: openlist-nvenc-worker
+    restart: unless-stopped
+    # NVIDIA Container Toolkit must be installed on the host.
+    gpus: all
+    environment:
+      OPENLIST_MASTER: ${OPENLIST_MASTER:?set OPENLIST_MASTER}
+      OPENLIST_SECRET: ${OPENLIST_SECRET:?set OPENLIST_SECRET}
+      OPENLIST_WORKER_NAME: ${OPENLIST_WORKER_NAME:-nvenc-worker}
+      OPENLIST_CAPACITY: ${OPENLIST_CAPACITY:-1}
+      OPENLIST_HWACCEL: nvenc
+      OPENLIST_UI_PASSWORD: ${OPENLIST_UI_PASSWORD:?set OPENLIST_UI_PASSWORD}
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
+    ports:
+      - "8080:8080"
+    volumes:
+      - openlist-worker-state:/var/lib/openlist-worker
+    networks:
+      - openlist
+
+volumes:
+  openlist-worker-state:
+
+networks:
+  openlist:
+    external: true
+    name: ${OPENLIST_NETWORK:-openlist}

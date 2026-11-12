@@ -1,4 +1,4 @@
-name: Build private OpenList NVENC worker image
+name: Build OpenList NVENC worker image
 
 on:
   workflow_dispatch:
@@ -15,6 +15,11 @@ on:
       - .dockerignore
       - .github/workflows/build-image.yml
       - README.md
+      - config/**
+      - scripts/**
+      - web/**
+      - entrypoint.py
+      - compose.worker.example.yml
 
 permissions:
   contents: read
@@ -27,7 +32,7 @@ jobs:
       OPENLIST_REF: ${{ inputs.openlist_ref || 'v4.2.9' }}
       IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/openlist-transcode-worker
     steps:
-      - name: Checkout private worker project
+      - name: Checkout worker project
         uses: actions/checkout@v4
 
       - name: Checkout OpenList source at requested ref
@@ -49,7 +54,7 @@ jobs:
           go-version-file: upstream/go.mod
           cache-dependency-path: upstream/go.sum
 
-      - name: Build worker binary
+      - name: Build official worker binary
         working-directory: upstream
         env:
           CGO_ENABLED: 0
@@ -57,9 +62,13 @@ jobs:
           GOARCH: amd64
         run: |
           go build -trimpath -ldflags='-s -w' -o ../openlist-transcode-worker ./cmd/worker
-          file ../openlist-transcode-worker || true
+          file ../openlist-transcode-worker
 
-      - name: Log in to private GHCR package
+      - name: Check public build context for private data
+        run: |
+          ! git grep -n -I -E '192\.168\.|gho_|github_pat_|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY' -- . ':!.github'
+
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -79,7 +88,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and publish private image
+      - name: Build and publish image
         uses: docker/build-push-action@v6
         with:
           context: .

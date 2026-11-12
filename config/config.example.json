@@ -1,0 +1,25 @@
+{
+  "worker": {
+    "master": "http://openlist:5244",
+    "secret": "",
+    "name": "nvenc-worker",
+    "capacity": 1,
+    "hwaccel": "nvenc",
+    "ffmpeg": "/usr/local/bin/ffmpeg-nvenc-wrapper",
+    "workdir": "/var/lib/openlist-worker"
+  },
+  "nvenc": {
+    "enabled": true,
+    "preset": "p5",
+    "tune": "hq",
+    "rc": "vbr",
+    "cq": 0,
+    "multipass": "qres",
+    "lookahead": 0,
+    "bf": 3,
+    "b_ref_mode": "disabled",
+    "spatial_aq": true,
+    "temporal_aq": true,
+    "aq_strength": 8
+  }
+}

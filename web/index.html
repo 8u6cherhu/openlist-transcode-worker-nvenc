@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpenList NVENC Worker</title>
+<style>
+:root{color-scheme:dark;--bg:#111827;--panel:#1f2937;--line:#374151;--text:#f3f4f6;--muted:#9ca3af;--accent:#60a5fa;--ok:#34d399;--bad:#f87171}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#111827,#0f172a);font:15px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}main{max-width:900px;margin:30px auto;padding:0 18px}h1{font-size:25px;margin:0 0 6px}h2{font-size:17px;margin:0 0 16px}p{color:var(--muted);line-height:1.5}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}@media(max-width:700px){.grid{grid-template-columns:1fr}}section{background:rgba(31,41,55,.92);border:1px solid var(--line);border-radius:12px;padding:20px;box-shadow:0 12px 28px #0003}.field{margin:13px 0}.field label{display:block;color:#d1d5db;margin-bottom:6px}.field small{display:block;color:var(--muted);margin-top:4px}input,select{width:100%;padding:9px 10px;border-radius:7px;background:#111827;border:1px solid #4b5563;color:var(--text)}input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}.check{display:flex;align-items:center;gap:8px}.check input{width:auto}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}button{border:0;border-radius:7px;padding:10px 15px;background:var(--accent);color:#082f49;font-weight:700;cursor:pointer}button.secondary{background:#4b5563;color:var(--text)}#status{margin-top:14px;color:var(--muted);white-space:pre-wrap}.badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px}.ok{background:#064e3b;color:#a7f3d0}.bad{background:#7f1d1d;color:#fecaca}.note{border-left:3px solid var(--accent);padding-left:12px;color:#cbd5e1}
+</style></head>
+<body><main>
+<h1>OpenList NVENC Worker</h1><p>独立配置层：官方 Worker 保持原样；保存后只重启 Worker 子进程。上游更新时不会覆盖本页面和包装器。</p>
+<div class="grid"><section><h2>Worker 连接</h2>
+<div class="field"><label for="master">Master URL</label><input id="master" type="url" required><small>例如 http://openlist:5244</small></div>
+<div class="field"><label for="secret">Worker Secret</label><input id="secret" type="password" placeholder="保持现有值请留空"><small>页面不会回显 secret。</small></div>
+<div class="field"><label for="name">Worker 名称</label><input id="name"></div>
+<div class="field"><label for="capacity">并发任务数</label><input id="capacity" type="number" min="1" max="64"></div>
+<div class="field"><label for="hwaccel">硬件加速</label><select id="hwaccel"><option>nvenc</option><option>auto</option><option>none</option><option>qsv</option><option>vaapi</option><option>amf</option><option>videotoolbox</option></select></div>
+</section><section><h2>NVENC 输出策略</h2>
+<div class="check"><input id="enabled" type="checkbox"><label for="enabled">启用 NVENC 参数包装器</label></div>
+<div class="field"><label for="preset">Preset</label><select id="preset"><option value="p1">p1</option><option value="p2">p2</option><option value="p3">p3</option><option value="p4">p4</option><option value="p5">p5</option><option value="p6">p6</option><option value="p7">p7</option></select></div>
+<div class="field"><label for="tune">Tune</label><select id="tune"><option value="hq">hq</option><option value="ll">ll</option><option value="ull">ull</option><option value="lossless">lossless</option></select></div>
+<div class="field"><label for="rc">Rate control</label><select id="rc"><option value="vbr">vbr</option><option value="cbr">cbr</option><option value="constqp">constqp</option></select><small>默认 vbr；码率仍由 Master Job Profile 提供。</small></div>
+<div class="field"><label for="cq">CQ（0 表示不覆盖）</label><input id="cq" type="number" min="0" max="51"></div>
+<div class="field"><label for="multipass">Multipass</label><select id="multipass"><option value="disabled">disabled</option><option value="qres">qres</option><option value="fullres">fullres</option></select></div>
+<div class="field"><label for="lookahead">Lookahead</label><select id="lookahead"><option value="0">关闭</option><option value="1">开启</option></select></div>
+<div class="field"><label for="bf">B-frames</label><input id="bf" type="number" min="0" max="8"></div>
+<div class="field"><label for="b_ref_mode">B-ref mode</label><select id="b_ref_mode"><option value="disabled">disabled</option><option value="each">each</option><option value="middle">middle</option></select></div>
+<div class="check"><input id="spatial_aq" type="checkbox"><label for="spatial_aq">Spatial AQ</label></div>
+<div class="check"><input id="temporal_aq" type="checkbox"><label for="temporal_aq">Temporal AQ</label></div>
+<div class="field"><label for="aq_strength">AQ strength</label><input id="aq_strength" type="number" min="1" max="15"></div>
+</section></div>
+<section style="margin-top:18px"><div class="note">这些开关只在 Job Profile 选择 NVENC 编码器时生效。浏览器、iOS 和 Master 下发的编码、码率、分辨率仍决定任务本身；包装器只补充 NVENC 编码器选项。</div><div class="actions"><button onclick="save()">保存并重启 Worker</button><button class="secondary" onclick="restart()">仅重启 Worker</button><button class="secondary" onclick="load()">重新读取</button></div><div id="status">正在读取状态…</div></section>
+<script>
+const $=id=>document.getElementById(id);let cfg;
+function setForm(c){cfg=c;$('master').value=c.worker.master;$('secret').value='';$('name').value=c.worker.name;$('capacity').value=c.worker.capacity;$('hwaccel').value=c.worker.hwaccel;$('enabled').checked=!!c.nvenc.enabled;$('preset').value=c.nvenc.preset;$('tune').value=c.nvenc.tune;$('rc').value=c.nvenc.rc;$('cq').value=c.nvenc.cq;$('multipass').value=c.nvenc.multipass;$('lookahead').value=c.nvenc.lookahead?1:0;$('bf').value=c.nvenc.bf;$('b_ref_mode').value=c.nvenc.b_ref_mode;$('spatial_aq').checked=!!c.nvenc.spatial_aq;$('temporal_aq').checked=!!c.nvenc.temporal_aq;$('aq_strength').value=c.nvenc.aq_strength}
+function form(){let c=JSON.parse(JSON.stringify(cfg));c.worker.master=$('master').value;c.worker.secret=$('secret').value||'********';c.worker.name=$('name').value;c.worker.capacity=+$('capacity').value;c.worker.hwaccel=$('hwaccel').value;c.nvenc.enabled=$('enabled').checked;c.nvenc.preset=$('preset').value;c.nvenc.tune=$('tune').value;c.nvenc.rc=$('rc').value;c.nvenc.cq=+$('cq').value;c.nvenc.multipass=$('multipass').value;c.nvenc.lookahead=+$('lookahead').value;c.nvenc.bf=+$('bf').value;c.nvenc.b_ref_mode=$('b_ref_mode').value;c.nvenc.spatial_aq=$('spatial_aq').checked;c.nvenc.temporal_aq=$('temporal_aq').checked;c.nvenc.aq_strength=+$('aq_strength').value;return c}
+async function api(url,opt){let r=await fetch(url,opt);let j=await r.json();if(!r.ok)throw Error(j.error||r.statusText);return j}
+async function load(){try{setForm(await api('/api/config'));let s=await api('/api/status');$('status').innerHTML=`<span class="badge ${s.running?'ok':'bad'}">${s.running?'运行中':'已停止'}</span> PID ${s.pid||'-'}` }catch(e){$('status').textContent='读取失败：'+e.message}}
+async function save(){try{let j=await api('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form())});$('status').textContent='已保存并重启：'+JSON.stringify(j.status);await load()}catch(e){$('status').textContent='保存失败：'+e.message}}
+async function restart(){try{await api('/api/restart',{method:'POST'});await load()}catch(e){$('status').textContent='重启失败：'+e.message}}
+load();setInterval(load,10000)
+</script></main></body></html>
