@@ -7,6 +7,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 CONFIG = Path(os.environ.get("OPENLIST_CONFIG_FILE", "/var/lib/openlist-worker/config.json"))
 REAL_FFMPEG = os.environ.get("OPENLIST_REAL_FFMPEG", "/usr/bin/ffmpeg")
@@ -30,10 +31,67 @@ def add_if_missing(out: list[str], args: list[str], names: set[str], *values: st
         out.extend(values)
 
 
+def option_value(args: list[str], names: set[str]) -> str | None:
+    for index, arg in enumerate(args[:-1]):
+        if arg in names:
+            return args[index + 1]
+    return None
+
+
+def rewrite_worker_source_origin(args: list[str], config: dict) -> list[str]:
+    """Use the Worker-to-Master origin while preserving the signed URL path."""
+    worker_config = config.get("worker", {})
+    if not isinstance(worker_config, dict):
+        return list(args)
+    master = worker_config.get("master")
+    if not isinstance(master, str) or not master:
+        return list(args)
+    try:
+        master_url = urlsplit(master)
+    except ValueError:
+        return list(args)
+    if master_url.scheme not in {"http", "https"} or not master_url.netloc:
+        return list(args)
+    master_prefix = master_url.path.rstrip("/")
+    if not master_prefix:
+        return list(args)
+
+    out = list(args)
+    source_index = next(
+        (index + 1 for index, arg in enumerate(out[:-1]) if arg == "-i"),
+        None,
+    )
+    if source_index is None:
+        return out
+    try:
+        source_url = urlsplit(out[source_index])
+    except ValueError:
+        return out
+    if (
+        source_url.scheme not in {"http", "https"}
+        or not source_url.netloc
+        or not source_url.path.startswith(master_prefix + "/")
+    ):
+        return out
+    out[source_index] = urlunsplit(
+        (
+            master_url.scheme,
+            master_url.netloc,
+            source_url.path,
+            source_url.query,
+            source_url.fragment,
+        )
+    )
+    return out
+
+
 def main() -> int:
     args = sys.argv[1:]
     if not args:
         os.execv(REAL_FFMPEG, [REAL_FFMPEG])
+
+    config = read_config()
+    args = rewrite_worker_source_origin(args, config)
 
     # The upstream worker puts -c:v before the HLS output. Only touch NVENC jobs.
     codec = ""
@@ -44,7 +102,7 @@ def main() -> int:
     if not codec.endswith("_nvenc"):
         os.execv(REAL_FFMPEG, [REAL_FFMPEG, *args])
 
-    config = read_config().get("nvenc", {})
+    config = config.get("nvenc", {})
     if not isinstance(config, dict) or not config.get("enabled", True):
         os.execv(REAL_FFMPEG, [REAL_FFMPEG, *args])
 
@@ -71,9 +129,26 @@ def main() -> int:
     lookahead = config.get("lookahead", 0)
     if bool(lookahead):
         add_if_missing(injected, args, {"-look_ahead", "-lookahead"}, "-look_ahead", "1")
-    bf = config.get("bf", 0)
-    if bf not in (None, "", 0, "0") and str(bf).isdigit():
-        add_if_missing(injected, args, {"-bf"}, "-bf", str(bf))
+    bf = config.get("bf", None)
+    if bf not in (None, ""):
+        bf_text = str(bf).strip()
+        if bf_text.isdigit():
+            add_if_missing(injected, args, {"-bf"}, "-bf", bf_text)
+    # OpenList's HLS uploader records the configured segment duration. NVENC
+    # otherwise follows the source GOP, which can be much longer than
+    # -hls_time and produces segments whose internal duration disagrees with
+    # the playlist metadata. Force video keyframes at the HLS interval when
+    # the upstream command has not already supplied a keyframe policy.
+    hls_time = option_value(args, {"-hls_time"})
+    if hls_time and not option_present(args, {"-force_key_frames", "-force_keyframe"}):
+        try:
+            segment_seconds = float(hls_time)
+        except ValueError:
+            segment_seconds = 0
+        if segment_seconds > 0:
+            expression = f"expr:gte(t,n_forced*{segment_seconds:g})"
+            injected.extend(("-force_key_frames", expression))
+            add_if_missing(injected, args, {"-forced-idr"}, "-forced-idr", "1")
     b_ref_mode = str(config.get("b_ref_mode", "")).strip()
     if b_ref_mode:
         add_if_missing(injected, args, {"-b_ref_mode"}, "-b_ref_mode", b_ref_mode)
