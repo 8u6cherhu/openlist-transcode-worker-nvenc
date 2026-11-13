@@ -48,7 +48,9 @@ jobs:
             echo "Repository variable IMAGE_NAMESPACE is required." >&2
             exit 1
           fi
-          if [ "${IMAGE_NAMESPACE,,}" = "${GITHUB_REPOSITORY_OWNER,,}" ]; then
+          normalized_namespace="$(printf '%s' "${IMAGE_NAMESPACE}" | tr '[:upper:]' '[:lower:]')"
+          normalized_owner="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          if [ "${normalized_namespace}" = "${normalized_owner}" ]; then
             echo "IMAGE_NAMESPACE must be a neutral account or organization, not the repository owner." >&2
             exit 1
           fi
