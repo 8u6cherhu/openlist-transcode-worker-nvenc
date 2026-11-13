@@ -48,6 +48,10 @@ jobs:
             echo "Repository variable IMAGE_NAMESPACE is required." >&2
             exit 1
           fi
+          if [ "${IMAGE_NAMESPACE,,}" = "${GITHUB_REPOSITORY_OWNER,,}" ]; then
+            echo "IMAGE_NAMESPACE must be a neutral account or organization, not the repository owner." >&2
+            exit 1
+          fi
           case "${IMAGE_NAMESPACE}" in
             *[!A-Za-z0-9._-]*)
               echo "IMAGE_NAMESPACE contains characters invalid for an OCI image name." >&2
