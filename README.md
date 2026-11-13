@@ -52,9 +52,9 @@ The UI can tune NVENC behavior, but it cannot change a Master Job Profile that n
 
 The workflow has an `openlist_ref` dispatch input. It checks out that upstream tag or commit, builds `./cmd/worker`, and copies the resulting binary into the image. The page, config schema, entrypoint, and FFmpeg wrapper live in this repository and do not modify upstream files. Updating OpenList therefore means selecting a newer upstream ref and rebuilding the image; no merge of local changes into `cmd/worker` is required.
 
-Before a push-triggered workflow run, set the repository Actions variable `IMAGE_NAMESPACE` to a neutral GitHub account or organization that should own the GHCR package. A manual `workflow_dispatch` run accepts the same value as its `image_namespace` input. The workflow requires one of these values, rejects the repository owner as the namespace, and never derives an image namespace from the repository owner. The resulting image is `ghcr.io/<IMAGE_NAMESPACE>/openlist-transcode-worker`; keep the concrete namespace in repository settings or a local deployment `.env`, not in tracked files.
+Before a push-triggered workflow run, set the repository Actions variable `IMAGE_NAMESPACE` to the GitHub account or organization that should own the GHCR package. A manual `workflow_dispatch` run accepts the same value as its `image_namespace` input. The workflow requires one of these values and never derives an image namespace from the repository owner. The resulting image is `ghcr.io/<IMAGE_NAMESPACE>/openlist-transcode-worker`; keep the concrete namespace in repository settings or a local deployment `.env`, not in tracked files.
 
-The workflow also scans the public build context for common private data patterns before publishing. GitHub Actions uses its ephemeral `GITHUB_TOKEN` only for package publishing; no token is stored in the repository.
+The workflow also scans the public build context for common private data patterns before publishing. It publishes tags without automatic repository-source OCI labels, so the image metadata does not add the repository URL. GitHub Actions uses its ephemeral `GITHUB_TOKEN` only for package publishing; no token is stored in the repository.
 
 ## Local smoke test
 
