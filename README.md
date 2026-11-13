@@ -9,6 +9,8 @@ The wrapper is deliberately outside the upstream process. It receives the same F
 The container expects NVIDIA Container Toolkit on the host when `hwaccel=nvenc` is selected. A typical deployment publishes the configuration page on port 8080 and persists `/var/lib/openlist-worker`:
 
 ```sh
+export OPENLIST_IMAGE='ghcr.io/<image-namespace>/openlist-transcode-worker:latest'
+
 docker run -d --name openlist-nvenc-worker \
   --gpus all \
   -p 8080:8080 \
@@ -16,7 +18,7 @@ docker run -d --name openlist-nvenc-worker \
   -e OPENLIST_MASTER=http://openlist:5244 \
   -e OPENLIST_SECRET='set-the-same-secret-in-openlist' \
   -e OPENLIST_UI_PASSWORD='choose-a-local-ui-password' \
-  ghcr.io/8u6cherhu/openlist-transcode-worker:latest
+  "${OPENLIST_IMAGE}"
 ```
 
 Set `OPENLIST_UI_PASSWORD` when the page is reachable beyond a trusted local network. The secret is stored only in the persisted container config and is masked in the page. Do not put a real Master URL, secret, token, password, private key, or local media path in this repository.
@@ -26,6 +28,7 @@ The repository also includes `compose.worker.example.yml`; copy it to a deployme
 Set `OPENLIST_NETWORK` in the local `.env` file to the Docker network shared by the Master and Worker. Keep real deployment values out of the public repository:
 
 ```dotenv
+OPENLIST_IMAGE=ghcr.io/<image-namespace>/openlist-transcode-worker:latest
 OPENLIST_SECRET=<same secret configured in OpenList>
 NVIDIA_VISIBLE_DEVICES=all
 OPENLIST_UI_PASSWORD=<optional local UI password>
@@ -48,6 +51,8 @@ The UI can tune NVENC behavior, but it cannot change a Master Job Profile that n
 ## Upstream update model
 
 The workflow has an `openlist_ref` dispatch input. It checks out that upstream tag or commit, builds `./cmd/worker`, and copies the resulting binary into the image. The page, config schema, entrypoint, and FFmpeg wrapper live in this repository and do not modify upstream files. Updating OpenList therefore means selecting a newer upstream ref and rebuilding the image; no merge of local changes into `cmd/worker` is required.
+
+Before a push-triggered workflow run, set the repository Actions variable `IMAGE_NAMESPACE` to the GitHub account or organization that should own the GHCR package. A manual `workflow_dispatch` run accepts the same value as its `image_namespace` input. The workflow requires one of these values and never derives an image namespace from the repository owner. The resulting image is `ghcr.io/<IMAGE_NAMESPACE>/openlist-transcode-worker`; keep the concrete namespace in repository settings or a local deployment `.env`, not in tracked files.
 
 The workflow also scans the public build context for common private data patterns before publishing. GitHub Actions uses its ephemeral `GITHUB_TOKEN` only for package publishing; no token is stored in the repository.
 

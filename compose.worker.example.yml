@@ -1,6 +1,6 @@
 services:
   openlist-nvenc-worker:
-    image: ghcr.io/8u6cherhu/openlist-transcode-worker:latest
+    image: ${OPENLIST_IMAGE:?set OPENLIST_IMAGE}
     container_name: openlist-nvenc-worker
     restart: unless-stopped
     # NVIDIA Container Toolkit must be installed on the host.
